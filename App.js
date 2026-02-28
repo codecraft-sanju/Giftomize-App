@@ -1,20 +1,90 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { 
+  StyleSheet, 
+  StatusBar, 
+  BackHandler, 
+  Platform, 
+  ActivityIndicator, 
+  View,
+  Text
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import * as Location from 'expo-location';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
+  const WEBSITE_URL = 'https://www.giftomize.shop';
+  const webViewRef = useRef(null);
+  const [canGoBack, setCanGoBack] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      await Location.requestForegroundPermissionsAsync();
+    })();
+  }, []);
+
+  // Hardware Back Button Handling
+  useEffect(() => {
+    const onBackPress = () => {
+      if (canGoBack && webViewRef.current) {
+        webViewRef.current.goBack();
+        return true;
+      }
+      return false; 
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [canGoBack]);
+
+  // Loading Screen (Black Theme)
+  const LoadingIndicatorView = () => {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#ffffff" size="large" />
+        <Text style={{marginTop: 10, color: '#ffffff'}}>Loading Giftomize...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        {/* Status Bar Black */}
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        
+        <WebView
+          ref={webViewRef}
+          source={{ uri: WEBSITE_URL }}
+          style={{ flex: 1, backgroundColor: '#000000' }}
+          forceDarkOn={true} 
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          pullToRefreshEnabled={true} 
+          startInLoadingState={true}
+          renderLoading={LoadingIndicatorView}
+          geolocationEnabled={true}
+          onNavigationStateChange={(navState) => {
+            setCanGoBack(navState.canGoBack);
+          }}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    backgroundColor: '#000000',
   },
+  loadingContainer: {
+    position: 'absolute',
+    height: '100%',
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    zIndex: 999,
+  }
 });
